@@ -49,10 +49,10 @@ type Distro struct {
 }
 
 const (
-	containerNamePrefixFallback = "fedora-toolbox"
-	distroFallback              = "fedora"
+	containerNamePrefixFallback = "kylin-toolbox"
+	distroFallback              = "kylin"
 	idTruncLength               = 12
-	releaseFallback             = "37"
+	releaseFallback             = "v10"
 )
 
 const (
@@ -96,6 +96,12 @@ var (
 	releaseDefault string
 
 	supportedDistros = map[string]Distro{
+		"kylin": {
+			"kylin-toolbox",
+			"kylin-toolbox",
+			getFullyQualifiedImageKylin,
+			parseReleaseKylin,
+		},
 		"fedora": {
 			"fedora-toolbox",
 			"fedora-toolbox",
@@ -324,6 +330,10 @@ func GetFullyQualifiedImageFromDistros(image, release string) (string, error) {
 	}
 
 	return "", fmt.Errorf("failed to resolve image %s", image)
+}
+func getFullyQualifiedImageKylin(image, release string) string {
+	imageFull := "harbor.kylinserver.top/devops/" + image
+	return imageFull
 }
 
 func getFullyQualifiedImageFedora(image, release string) string {
@@ -634,6 +644,23 @@ func parseRelease(distro, release string) (string, error) {
 	parseReleaseImpl := distroObj.ParseRelease
 	release, err := parseReleaseImpl(release)
 	return release, err
+}
+func parseReleaseKylin(release string) (string, error) {
+	if strings.HasPrefix(release, "V") {
+		release = strings.ToLower(release)
+	}
+
+	releaseN, err := strconv.Atoi(release[1:])
+	if err != nil {
+		logrus.Debugf("Parsing release %s as an integer failed: %s", release, err)
+		return "", &ParseReleaseError{"The release must be a positive integer."}
+	}
+
+	if releaseN <= 0 {
+		return "", &ParseReleaseError{"The release must be a positive integer."}
+	}
+
+	return release, nil
 }
 
 func parseReleaseFedora(release string) (string, error) {
