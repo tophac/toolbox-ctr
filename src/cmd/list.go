@@ -125,7 +125,7 @@ func list(cmd *cobra.Command, args []string) error {
 
 func getContainers() ([]toolboxContainer, error) {
 	logrus.Debug("Fetching all containers")
-	args := []string{"--all", "--sort", "names"}
+	args := []string{}
 	containers, err := podman.GetContainers(args...)
 	if err != nil {
 		logrus.Debugf("Fetching all containers failed: %s", err)

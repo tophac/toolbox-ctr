@@ -165,14 +165,16 @@ func ContainerExists(container string) (bool, error) {
 func GetContainers(args ...string) ([]map[string]interface{}, error) {
 	var stdout bytes.Buffer
 
-	logLevelString := LogLevel.String()
-	args = append([]string{"--log-level", logLevelString, "ps", "--format", "json"}, args...)
+	args = append([]string{"-n", "tb", "containers", "ls"}, args...)
 
-	if err := shell.Run("podman", nil, &stdout, nil, args...); err != nil {
+	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
 	}
 
 	output := stdout.Bytes()
+	outputs := string(stdout.Bytes()[:])
+	fmt.Println("container")
+	fmt.Println(outputs)
 	var containers []map[string]interface{}
 
 	if err := json.Unmarshal(output, &containers); err != nil {
@@ -192,17 +194,18 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 func GetImages(args ...string) ([]Image, error) {
 	var stdout bytes.Buffer
 
-	logLevelString := LogLevel.String()
-	args = append([]string{"--log-level", logLevelString, "images", "--format", "json"}, args...)
-	if err := shell.Run("podman", nil, &stdout, nil, args...); err != nil {
+	args = append([]string{"-n", "tb", "images", "ls"}, args...)
+	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
 	}
-
-	data := stdout.Bytes()
+	output := string(stdout.Bytes()[:])
+	fmt.Println("images")
+	fmt.Println(output)
+	//data := stdout.Bytes()
 	var images []Image
-	if err := json.Unmarshal(data, &images); err != nil {
-		return nil, err
-	}
+	//if err := json.Unmarshal(data, &images); err != nil {
+	//	return nil, err
+	//}
 
 	return images, nil
 }
