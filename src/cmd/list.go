@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/containers/toolbox/pkg/podman"
@@ -101,8 +100,8 @@ func list(cmd *cobra.Command, args []string) error {
 		lsImages = false
 	}
 
-	var images []podman.Image
-	var containers []toolboxContainer
+	var images string
+	var containers string
 	var err error
 
 	if lsImages {
@@ -119,45 +118,20 @@ func list(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	listOutput(images, containers)
+	fmt.Println(images, containers)
 	return nil
 }
 
-func getContainers() ([]toolboxContainer, error) {
+func getContainers() (string, error) {
 	logrus.Debug("Fetching all containers")
-	args := []string{"--all", "--sort", "names"}
+	args := []string{}
 	containers, err := podman.GetContainers(args...)
+
 	if err != nil {
 		logrus.Debugf("Fetching all containers failed: %s", err)
-		return nil, errors.New("failed to get containers")
+		return "", errors.New("failed to get containers")
 	}
-
-	var toolboxContainers []toolboxContainer
-
-	for _, container := range containers {
-		var c toolboxContainer
-
-		containerJSON, err := json.Marshal(container)
-		if err != nil {
-			logrus.Errorf("failed to marshal container: %v", err)
-			continue
-		}
-
-		err = c.UnmarshalJSON(containerJSON)
-		if err != nil {
-			logrus.Errorf("failed to unmarshal container: %v", err)
-			continue
-		}
-
-		for label := range toolboxLabels {
-			if _, ok := c.Labels[label]; ok {
-				toolboxContainers = append(toolboxContainers, c)
-				break
-			}
-		}
-	}
-
-	return toolboxContainers, nil
+	return containers, nil
 }
 
 func listHelp(cmd *cobra.Command, args []string) {
@@ -181,42 +155,16 @@ func listHelp(cmd *cobra.Command, args []string) {
 	}
 }
 
-func getImages(fillNameWithID bool) ([]podman.Image, error) {
+func getImages(fillNameWithID bool) (string, error) {
 	logrus.Debug("Fetching all images")
 	var args []string
 	images, err := podman.GetImages(args...)
 	if err != nil {
 		logrus.Debugf("Fetching all images failed: %s", err)
-		return nil, errors.New("failed to get images")
+		return "", errors.New("failed to get images")
 	}
 
-	processed := make(map[string]struct{})
-	var toolboxImages []podman.Image
-
-	for _, image := range images {
-		if _, ok := processed[image.ID]; ok {
-			continue
-		}
-
-		processed[image.ID] = struct{}{}
-		var isToolboxImage bool
-
-		for label := range toolboxLabels {
-			if _, ok := image.Labels[label]; ok {
-				isToolboxImage = true
-				break
-			}
-		}
-
-		if isToolboxImage {
-			flattenedImages := image.FlattenNames(fillNameWithID)
-			toolboxImages = append(toolboxImages, flattenedImages...)
-		}
-
-	}
-
-	sort.Sort(podman.ImageSlice(toolboxImages))
-	return toolboxImages, nil
+	return images, nil
 }
 
 func listOutput(images []podman.Image, containers []toolboxContainer) {

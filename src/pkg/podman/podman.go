@@ -162,22 +162,16 @@ func ContainerExists(container string) (bool, error) {
 // Returned value is a slice of dynamically unmarshalled json, so it needs to be treated properly.
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
-func GetContainers(args ...string) ([]map[string]interface{}, error) {
+func GetContainers(args ...string) (string, error) {
 	var stdout bytes.Buffer
 
-	logLevelString := LogLevel.String()
-	args = append([]string{"--log-level", logLevelString, "ps", "--format", "json"}, args...)
+	args = append([]string{"-n", "tb", "container", "ls"}, args...)
 
-	if err := shell.Run("podman", nil, &stdout, nil, args...); err != nil {
-		return nil, err
+	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
+		return "error", err
 	}
 
-	output := stdout.Bytes()
-	var containers []map[string]interface{}
-
-	if err := json.Unmarshal(output, &containers); err != nil {
-		return nil, err
-	}
+	containers := string(stdout.Bytes()[:])
 
 	return containers, nil
 }
@@ -189,20 +183,16 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 // Returned value is a slice of Images.
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
-func GetImages(args ...string) ([]Image, error) {
+func GetImages(args ...string) (string, error) {
 	var stdout bytes.Buffer
 
-	logLevelString := LogLevel.String()
-	args = append([]string{"--log-level", logLevelString, "images", "--format", "json"}, args...)
-	if err := shell.Run("podman", nil, &stdout, nil, args...); err != nil {
-		return nil, err
+	args = append([]string{"-n", "tb", "container", "ls"}, args...)
+
+	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
+		return "error", err
 	}
 
-	data := stdout.Bytes()
-	var images []Image
-	if err := json.Unmarshal(data, &images); err != nil {
-		return nil, err
-	}
+	images := string(stdout.Bytes()[:])
 
 	return images, nil
 }
