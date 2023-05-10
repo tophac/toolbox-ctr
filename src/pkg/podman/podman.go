@@ -164,6 +164,24 @@ func ContainerExists(container string) (bool, error) {
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
 func GetContainers(args ...string) ([]map[string]interface{}, error) {
+
+	var stdout bytes.Buffer
+	var containers []map[string]interface{}
+
+	args = append([]string{"-n", "tb", "containers", "ls"}, args...)
+
+	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
+		return nil, err
+	}
+	containerJSONBYTE := convertCtrOutputToJSON(string(stdout.Bytes()[:]))
+
+	if err := json.Unmarshal(containerJSONBYTE, &containers); err != nil {
+		return nil, err
+	}
+	return containers, nil
+}
+
+func convertCtrOutputToJSON(ctroutputs string) []byte {
 	type fakecontainer struct {
 		ID      string
 		Names   string
@@ -172,48 +190,33 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 		Image   string
 		Labels  map[string]string
 	}
-
-	var stdout bytes.Buffer
-
-	args = append([]string{"-n", "tb", "containers", "ls"}, args...)
-
-	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
-		return nil, err
-	}
-
-	//output := stdout.Bytes()
-	outputs := string(stdout.Bytes()[:])
-	fmt.Println("container")
-	fmt.Println(outputs)
-
-	var containers []map[string]interface{}
-	containerSTRING := strings.Split(outputs, "\n")
-	containerSTRING = containerSTRING[:len(containerSTRING)-1]
 	var containerJSONBYTE []byte
-	for index, container := range containerSTRING {
+
+	containerCTR := strings.Split(ctroutputs, "\n")
+	containerCTR = containerCTR[:len(containerCTR)-1]
+
+	for index, ctr := range containerCTR {
 		if index == 0 {
 			continue
 		} //skip title column
 		fcon := new(fakecontainer)
-		items := strings.Fields(container)
+		items := strings.Fields(ctr)
 		fcon.ID = items[0]
 		fcon.Names = items[0]
-		fcon.Status = items[2]
+		fcon.Status = "Created"
 		fcon.Created = "Created"
 		fcon.Image = items[1]
 		fcon.Labels = map[string]string{"com.github.containers.toolbox": "true"}
 		var data []byte
-		var errr error
-		data, errr = json.Marshal(fcon)
-		fmt.Println(errr)
-		containerJSONBYTE = append(data, containerJSONBYTE...)
-		fmt.Println(string(containerJSONBYTE))
+		data, _ = json.Marshal(fcon)
+		if containerJSONBYTE != nil {
+			data = append([]byte(","), data...)
+		}
+		containerJSONBYTE = append(containerJSONBYTE, data...)
 	}
-	if err := json.Unmarshal(containerJSONBYTE, &containers); err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	return containers, nil
+	containerJSONBYTE = append([]byte("["), containerJSONBYTE...)
+	containerJSONBYTE = append(containerJSONBYTE, []byte("]")...)
+	return containerJSONBYTE
 }
 
 // GetImages is a wrapper function around `podman images --format json` command.
@@ -230,11 +233,25 @@ func GetImages(args ...string) ([]Image, error) {
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
 	}
-	output := string(stdout.Bytes()[:])
-	fmt.Println("images")
-	fmt.Println(output)
-	//data := stdout.Bytes()
+	ctroutputs := string(stdout.Bytes()[:])
 	var images []Image
+	imageCTR := strings.Split(ctroutputs, "\n")
+	imageCTR = imageCTR[:len(imageCTR)-1]
+	for index, ctr := range imageCTR {
+		if index == 0 {
+			continue
+		} //skip title column
+		items := strings.Fields(ctr)
+		for _, image := range images {
+			image.ID = items[2]
+			name := strings.Split(items[0], ":")
+			image.Names = name
+			image.Created = items[3]
+			image.Labels = map[string]string{"com.github.containers.toolbox": "true"}
+		}
+	}
+
+	//data := stdout.Bytes()
 	//if err := json.Unmarshal(data, &images); err != nil {
 	//	return nil, err
 	//}
