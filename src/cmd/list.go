@@ -127,6 +127,11 @@ func getContainers() ([]toolboxContainer, error) {
 	logrus.Debug("Fetching all containers")
 	args := []string{"--all", "--sort", "names"}
 	containers, err := podman.GetContainers(args...)
+	fmt.Println("containers")
+	for key, value := range containers {
+		fmt.Println(key, ":", value)
+	}
+
 	if err != nil {
 		logrus.Debugf("Fetching all containers failed: %s", err)
 		return nil, errors.New("failed to get containers")
@@ -136,8 +141,10 @@ func getContainers() ([]toolboxContainer, error) {
 
 	for _, container := range containers {
 		var c toolboxContainer
-
+		fmt.Println(container)
 		containerJSON, err := json.Marshal(container)
+		fmt.Printf("\n\n\ncontainerJSON\n")
+		fmt.Println(string(containerJSON)[:])
 		if err != nil {
 			logrus.Errorf("failed to marshal container: %v", err)
 			continue
@@ -318,7 +325,9 @@ func (c *toolboxContainer) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-
+	fmt.Printf("\n\n\n")
+	fmt.Println("raw")
+	fmt.Println(raw)
 	c.ID = raw.ID
 	// In Podman V1 the field 'Names' held a single string but since Podman V2 the
 	// field holds an array of strings
