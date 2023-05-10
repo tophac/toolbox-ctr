@@ -30,10 +30,10 @@ import (
 )
 
 type Image struct {
-	ID      string
-	Names   []string
-	Created string
-	Labels  map[string]string
+	ID     string
+	Names  []string
+	Size   string
+	Labels map[string]string
 }
 
 type ImageSlice []Image
@@ -76,10 +76,10 @@ func (image *Image) FlattenNames(fillNameWithID bool) []Image {
 
 func (image *Image) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		ID      string
-		Names   []string
-		Created interface{}
-		Labels  map[string]string
+		ID     string
+		Names  []string
+		Size   string
+		Labels map[string]string
 	}
 
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -88,17 +88,7 @@ func (image *Image) UnmarshalJSON(data []byte) error {
 
 	image.ID = raw.ID
 	image.Names = raw.Names
-
-	// Until Podman 2.0.x the field 'Created' held a human-readable string in
-	// format "5 minutes ago". Since Podman 2.1 the field holds an integer with
-	// Unix time. Go interprets numbers in JSON as float64.
-	switch value := raw.Created.(type) {
-	case string:
-		image.Created = value
-	case float64:
-		image.Created = utils.HumanDuration(int64(value))
-	}
-
+	image.Size = raw.Size
 	image.Labels = raw.Labels
 	return nil
 }
@@ -173,7 +163,7 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
 	}
-	containerJSONBYTE := convertCtrOutputToJSON(string(stdout.Bytes()[:]))
+	containerJSONBYTE := convertCtrOutputToJSON(stdout.String())
 
 	if err := json.Unmarshal(containerJSONBYTE, &containers); err != nil {
 		return nil, err
@@ -183,28 +173,34 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 
 func convertCtrOutputToJSON(ctroutputs string) []byte {
 	type fakecontainer struct {
-		ID      string
-		Names   string
-		Status  string
-		Created string
-		Image   string
-		Labels  map[string]string
+		ID     string
+		Names  string
+		Status string
+		Image  string
+		Labels map[string]string
 	}
 	var containerJSONBYTE []byte
+	var stdout bytes.Buffer
+	args := []string{"-n", "tb", "task", "ls"}
 
+	shell.Run("ctr", nil, &stdout, nil, args...)
+	taskCTR := strings.Split(stdout.String(), "\n")
+	taskCTR = taskCTR[1 : len(taskCTR)-1]
 	containerCTR := strings.Split(ctroutputs, "\n")
-	containerCTR = containerCTR[:len(containerCTR)-1]
+	containerCTR = containerCTR[1 : len(containerCTR)-1]
 
-	for index, ctr := range containerCTR {
-		if index == 0 {
-			continue
-		} //skip title column
+	for _, ctr := range containerCTR {
 		fcon := new(fakecontainer)
 		items := strings.Fields(ctr)
 		fcon.ID = items[0]
 		fcon.Names = items[0]
 		fcon.Status = "Created"
-		fcon.Created = "Created"
+		for _, task := range taskCTR {
+			titems := strings.Fields(task)
+			if fcon.Names == titems[0] {
+				fcon.Status = titems[2]
+			}
+		}
 		fcon.Image = items[1]
 		fcon.Labels = map[string]string{"com.github.containers.toolbox": "true"}
 		var data []byte
@@ -228,7 +224,7 @@ func convertCtrOutputToJSON(ctroutputs string) []byte {
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
 func GetImages(args ...string) ([]Image, error) {
 	var stdout bytes.Buffer
-
+	var imageJSONBYTE []byte
 	args = append([]string{"-n", "tb", "images", "ls"}, args...)
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
@@ -241,21 +237,28 @@ func GetImages(args ...string) ([]Image, error) {
 		if index == 0 {
 			continue
 		} //skip title column
+		fimage := new(Image)
 		items := strings.Fields(ctr)
-		for _, image := range images {
-			image.ID = items[2]
-			name := strings.Split(items[0], ":")
-			image.Names = name
-			image.Created = items[3]
-			image.Labels = map[string]string{"com.github.containers.toolbox": "true"}
+		fimage.ID = items[2]
+		name := []string{items[0]}
+		fimage.Names = name
+		size := items[3] + " " + items[4]
+		fimage.Size = size
+		fimage.Labels = map[string]string{"com.github.containers.toolbox": "true"}
+		var data []byte
+		data, _ = json.Marshal(fimage)
+		if imageJSONBYTE != nil {
+			data = append([]byte(","), data...)
 		}
+		imageJSONBYTE = append(imageJSONBYTE, data...)
 	}
+	imageJSONBYTE = append([]byte("["), imageJSONBYTE...)
+	imageJSONBYTE = append(imageJSONBYTE, []byte("]")...)
 
-	//data := stdout.Bytes()
-	//if err := json.Unmarshal(data, &images); err != nil {
-	//	return nil, err
-	//}
-
+	if err := json.Unmarshal(imageJSONBYTE, &images); err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
 	return images, nil
 }
 

@@ -32,12 +32,11 @@ import (
 )
 
 type toolboxContainer struct {
-	ID      string
-	Names   []string
-	Status  string
-	Created string
-	Image   string
-	Labels  map[string]string
+	ID     string
+	Names  []string
+	Status string
+	Image  string
+	Labels map[string]string
 }
 
 var (
@@ -185,6 +184,7 @@ func getImages(fillNameWithID bool) ([]podman.Image, error) {
 	logrus.Debug("Fetching all images")
 	var args []string
 	images, err := podman.GetImages(args...)
+	fmt.Println(err)
 	if err != nil {
 		logrus.Debugf("Fetching all images failed: %s", err)
 		return nil, errors.New("failed to get images")
@@ -222,7 +222,7 @@ func getImages(fillNameWithID bool) ([]podman.Image, error) {
 func listOutput(images []podman.Image, containers []toolboxContainer) {
 	if len(images) != 0 {
 		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(writer, "%s\t%s\t%s\n", "IMAGE ID", "IMAGE NAME", "CREATED")
+		fmt.Fprintf(writer, "%s\t%s\t%s\n", "IMAGE ID", "IMAGE NAME", "SIZE")
 
 		for _, image := range images {
 			if len(image.Names) != 1 {
@@ -232,7 +232,7 @@ func listOutput(images []podman.Image, containers []toolboxContainer) {
 			fmt.Fprintf(writer, "%s\t%s\t%s\n",
 				utils.ShortID(image.ID),
 				image.Names[0],
-				image.Created)
+				image.Size)
 		}
 
 		writer.Flush()
@@ -256,10 +256,8 @@ func listOutput(images []podman.Image, containers []toolboxContainer) {
 		}
 
 		fmt.Fprintf(writer,
-			"%s\t%s\t%s\t%s\t%s",
-			"CONTAINER ID",
+			"%s\t%s\t%s",
 			"CONTAINER NAME",
-			"CREATED",
 			"STATUS",
 			"IMAGE NAME")
 
@@ -286,10 +284,8 @@ func listOutput(images []podman.Image, containers []toolboxContainer) {
 				fmt.Fprintf(writer, "%s", color)
 			}
 
-			fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s",
-				utils.ShortID(container.ID),
+			fmt.Fprintf(writer, "%s\t%s\t%s",
 				container.Names[0],
-				container.Created,
 				container.Status,
 				container.Image)
 
@@ -331,29 +327,7 @@ func (c *toolboxContainer) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	// In Podman V1 the field holding a string about the container's state was
-	// called 'Status' and field 'State' held a number representing the state. In
-	// Podman V2 the string was moved to 'State' and field 'Status' was dropped.
-	switch value := raw.State.(type) {
-	case string:
-		c.Status = value
-	case float64:
-		c.Status = raw.Status
-	}
-
-	// In Podman V1 the field 'Created' held a human-readable string in format
-	// "5 minutes ago". Since Podman V2 the field holds an integer with Unix time.
-	// After a discussion in https://github.com/containers/podman/issues/6594 the
-	// previous value was moved to field 'CreatedAt'. Since we're already using
-	// the 'github.com/docker/go-units' library, we'll stop using the provided
-	// human-readable string and assemble it ourselves. Go interprets numbers in
-	// JSON as float64.
-	switch value := raw.Created.(type) {
-	case string:
-		c.Created = value
-	case float64:
-		c.Created = utils.HumanDuration(int64(value))
-	}
+	c.Status = raw.Status
 	c.Image = raw.Image
 	c.Labels = raw.Labels
 

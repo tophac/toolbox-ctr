@@ -625,7 +625,7 @@ func SetUpConfiguration() error {
 // ShortID shortens provided id to first 12 characters.
 func ShortID(id string) string {
 	if len(id) > idTruncLength {
-		return id[:idTruncLength]
+		return id[7 : 7+idTruncLength]
 	}
 	return id
 }
