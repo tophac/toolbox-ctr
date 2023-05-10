@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/HarryMichal/go-version"
 	"github.com/containers/toolbox/pkg/shell"
@@ -163,6 +164,15 @@ func ContainerExists(container string) (bool, error) {
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
 func GetContainers(args ...string) ([]map[string]interface{}, error) {
+	type fakecontainer struct {
+		ID      string
+		Names   string
+		Status  string
+		Created string
+		Image   string
+		Labels  map[string]string
+	}
+
 	var stdout bytes.Buffer
 
 	args = append([]string{"-n", "tb", "containers", "ls"}, args...)
@@ -171,16 +181,38 @@ func GetContainers(args ...string) ([]map[string]interface{}, error) {
 		return nil, err
 	}
 
-	output := stdout.Bytes()
+	//output := stdout.Bytes()
 	outputs := string(stdout.Bytes()[:])
 	fmt.Println("container")
 	fmt.Println(outputs)
-	var containers []map[string]interface{}
 
-	if err := json.Unmarshal(output, &containers); err != nil {
+	var containers []map[string]interface{}
+	containerSTRING := strings.Split(outputs, "\n")
+	containerSTRING = containerSTRING[:len(containerSTRING)-1]
+	var containerJSONBYTE []byte
+	for index, container := range containerSTRING {
+		if index == 0 {
+			continue
+		} //skip title column
+		fcon := new(fakecontainer)
+		items := strings.Fields(container)
+		fcon.ID = items[0]
+		fcon.Names = items[0]
+		fcon.Status = items[2]
+		fcon.Created = "Created"
+		fcon.Image = items[1]
+		fcon.Labels = map[string]string{"com.github.containers.toolbox": "true"}
+		var data []byte
+		var errr error
+		data, errr = json.Marshal(fcon)
+		fmt.Println(errr)
+		containerJSONBYTE = append(data, containerJSONBYTE...)
+		fmt.Println(string(containerJSONBYTE))
+	}
+	if err := json.Unmarshal(containerJSONBYTE, &containers); err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
-
 	return containers, nil
 }
 

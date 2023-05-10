@@ -107,9 +107,9 @@ func list(cmd *cobra.Command, args []string) error {
 
 	if lsImages {
 		images, err = getImages(false)
-		if err != nil {
-			return err
-		}
+		//if err != nil {
+		//	return err
+		//}
 	}
 
 	if lsContainers {
@@ -127,6 +127,7 @@ func getContainers() ([]toolboxContainer, error) {
 	logrus.Debug("Fetching all containers")
 	args := []string{}
 	containers, err := podman.GetContainers(args...)
+	logrus.Debug("%s", containers)
 	if err != nil {
 		logrus.Debugf("Fetching all containers failed: %s", err)
 		return nil, errors.New("failed to get containers")
