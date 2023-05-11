@@ -385,26 +385,18 @@ func Pull(imageName string) error {
 
 func RemoveContainer(container string, forceDelete bool) error {
 	logrus.Debugf("Removing container %s", container)
-
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "rm"}
-
-	if forceDelete {
-		args = append(args, "--force")
-	}
+	args := []string{"-n", "tb", "container", "rm"}
 
 	args = append(args, container)
 
-	exitCode, err := shell.RunWithExitCode("podman", nil, nil, nil, args...)
+	exitCode, err := shell.RunWithExitCode("ctr", nil, nil, nil, args...)
 	switch exitCode {
 	case 0:
 		if err != nil {
 			panic("unexpected error: 'podman rm' finished successfully")
 		}
 	case 1:
-		err = fmt.Errorf("container %s does not exist", container)
-	case 2:
-		err = fmt.Errorf("container %s is running", container)
+		err = fmt.Errorf("container %s does not exist,or container is running", container)
 	default:
 		err = fmt.Errorf("failed to remove container %s", container)
 	}
@@ -419,16 +411,12 @@ func RemoveContainer(container string, forceDelete bool) error {
 func RemoveImage(image string, forceDelete bool) error {
 	logrus.Debugf("Removing image %s", image)
 
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "rmi"}
-
-	if forceDelete {
-		args = append(args, "--force")
-	}
+	args := []string{"-n", "tb", "image", "rm"}
 
 	args = append(args, image)
 
-	exitCode, err := shell.RunWithExitCode("podman", nil, nil, nil, args...)
+	exitCode, err := shell.RunWithExitCode("ctr", nil, nil, nil, args...)
+	//Whether or not the image is succesdfully removed, "ctr i rm " returns 0 as exitcode.
 	switch exitCode {
 	case 0:
 		if err != nil {
