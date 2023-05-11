@@ -452,7 +452,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		s.Start()
 		defer s.Stop()
 	}
-
+	fmt.Print("createargs:\n", createArgs)
 	if err := shell.Run("podman", nil, nil, nil, createArgs...); err != nil {
 		return fmt.Errorf("failed to create container %s", container)
 	}
@@ -534,39 +534,21 @@ func getFullyQualifiedImageFromRepoTags(image string) (string, error) {
 	var imageFull string
 
 	if utils.ImageReferenceHasDomain(image) {
-		imageFull = image
-	} else {
-		info, err := podman.Inspect("image", image)
-		if err != nil {
-			return "", fmt.Errorf("failed to inspect image %s", image)
-		}
-
-		if info["RepoTags"] == nil {
-			return "", fmt.Errorf("missing RepoTag for image %s", image)
-		}
-
-		repoTags := info["RepoTags"].([]interface{})
-		if len(repoTags) == 0 {
-			return "", fmt.Errorf("empty RepoTag for image %s", image)
-		}
-
-		for _, repoTag := range repoTags {
-			repoTagString := repoTag.(string)
-			tag := utils.ImageReferenceGetTag(repoTagString)
-			if tag != "latest" {
-				imageFull = repoTagString
-				break
-			}
-		}
-
-		if imageFull == "" {
-			imageFull = repoTags[0].(string)
+		return image, nil
+	}
+	info, err := podman.GetImages()
+	if err != nil {
+		return "", fmt.Errorf("failed to get image")
+	}
+	for _, imagename := range info {
+		registry := strings.Split(imagename.Names[0], "/")
+		if index := strings.Index(registry[len(registry)-1], image); index >= 0 {
+			return imagename.Names[0], nil
 		}
 	}
 
 	logrus.Debugf("Resolved image %s to %s", image, imageFull)
-
-	return imageFull, nil
+	return "", fmt.Errorf("failed to get image %s", image)
 }
 
 func getServiceSocket(serviceName string, unitName string) (string, error) {
