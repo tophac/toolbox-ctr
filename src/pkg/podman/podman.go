@@ -160,7 +160,7 @@ func GetContainers() ([]map[string]interface{}, error) {
 	var stdout bytes.Buffer
 	var containers []map[string]interface{}
 
-	args := append([]string{"-n", "tb", "containers", "ls"})
+	args := []string{"-n", "tb", "containers", "ls"}
 
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
