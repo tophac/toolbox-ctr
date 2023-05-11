@@ -131,19 +131,21 @@ func CheckVersion(requiredVersion string) bool {
 //
 // Parameter container is a name or an id of a container.
 func ContainerExists(container string) (bool, error) {
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "container", "exists", container}
-
-	exitCode, err := shell.RunWithExitCode("podman", nil, nil, nil, args...)
-	if exitCode != 0 && err == nil {
-		err = fmt.Errorf("failed to find container %s", container)
+	var stdout bytes.Buffer
+	args := []string{"-n", "tb", "containers", "ls"}
+	err := shell.Run("ctr", nil, &stdout, nil, args...)
+	containerCTR := strings.Split(stdout.String(), "\n")
+	containerCTR = containerCTR[1 : len(containerCTR)-1]
+	for _, ctr := range containerCTR {
+		items := strings.Fields(ctr)
+		if container == items[0] {
+			return true, nil
+		}
 	}
-
 	if err != nil {
 		return false, err
 	}
-
-	return true, nil
+	return false, nil
 }
 
 // GetContainers is a wrapper function around `podman ps --format json` command.
@@ -153,12 +155,12 @@ func ContainerExists(container string) (bool, error) {
 // Returned value is a slice of dynamically unmarshalled json, so it needs to be treated properly.
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
-func GetContainers(args ...string) ([]map[string]interface{}, error) {
+func GetContainers() ([]map[string]interface{}, error) {
 
 	var stdout bytes.Buffer
 	var containers []map[string]interface{}
 
-	args = append([]string{"-n", "tb", "containers", "ls"}, args...)
+	args := append([]string{"-n", "tb", "containers", "ls"})
 
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
@@ -222,10 +224,10 @@ func convertCtrOutputToJSON(ctroutputs string) []byte {
 // Returned value is a slice of Images.
 //
 // If a problem happens during execution, first argument is nil and second argument holds the error message.
-func GetImages(args ...string) ([]Image, error) {
+func GetImages() ([]Image, error) {
 	var stdout bytes.Buffer
 	var imageJSONBYTE []byte
-	args = append([]string{"-n", "tb", "images", "ls"}, args...)
+	args := []string{"-n", "tb", "images", "ls"}
 	if err := shell.Run("ctr", nil, &stdout, nil, args...); err != nil {
 		return nil, err
 	}
@@ -297,19 +299,21 @@ func GetVersion() (string, error) {
 //
 // Parameter image is a name or an id of an image.
 func ImageExists(image string) (bool, error) {
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "image", "exists", image}
-
-	exitCode, err := shell.RunWithExitCode("podman", nil, nil, nil, args...)
-	if exitCode != 0 && err == nil {
-		err = fmt.Errorf("failed to find image %s", image)
+	var stdout bytes.Buffer
+	args := []string{"-n", "tb", "image", "ls"}
+	err := shell.Run("ctr", nil, &stdout, nil, args...)
+	imageCTR := strings.Split(stdout.String(), "\n")
+	imageCTR = imageCTR[1 : len(imageCTR)-1]
+	for _, ctr := range imageCTR {
+		items := strings.Fields(ctr)
+		if image == items[0] {
+			return true, nil
+		}
 	}
-
 	if err != nil {
 		return false, err
 	}
-
-	return true, nil
+	return false, nil
 }
 
 // Inspect is a wrapper around 'podman inspect' command
@@ -367,21 +371,12 @@ func IsToolboxImage(image string) (bool, error) {
 	return true, nil
 }
 
-// Pull pulls an image
-//
-// authfile is a path to a JSON authentication file and is internally used only
-// if it is not an empty string.
-func Pull(imageName string, authfile string) error {
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "pull"}
-
-	if authfile != "" {
-		args = append(args, []string{"--authfile", authfile}...)
-	}
+func Pull(imageName string) error {
+	args := []string{"-n", "tb", "image", "pull"}
 
 	args = append(args, imageName)
 
-	if err := shell.Run("podman", nil, nil, nil, args...); err != nil {
+	if err := shell.Run("ctr", nil, nil, nil, args...); err != nil {
 		return err
 	}
 

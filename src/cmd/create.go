@@ -42,7 +42,6 @@ const (
 
 var (
 	createFlags struct {
-		authFile  string
 		container string
 		distro    string
 		image     string
@@ -67,11 +66,6 @@ var createCmd = &cobra.Command{
 
 func init() {
 	flags := createCmd.Flags()
-
-	flags.StringVar(&createFlags.authFile,
-		"authfile",
-		"",
-		"Path to a file with credentials for authenticating to the registry for private images")
 
 	flags.StringVarP(&createFlags.container,
 		"container",
@@ -143,18 +137,6 @@ func create(cmd *cobra.Command, args []string) error {
 		return errors.New(errMsg)
 	}
 
-	if cmd.Flag("authfile").Changed {
-		if !utils.PathExists(createFlags.authFile) {
-			var builder strings.Builder
-			fmt.Fprintf(&builder, "file %s not found\n", createFlags.authFile)
-			fmt.Fprintf(&builder, "'podman login' can be used to create the file.\n")
-			fmt.Fprintf(&builder, "Run '%s --help' for usage.", executableBase)
-
-			errMsg := builder.String()
-			return errors.New(errMsg)
-		}
-	}
-
 	var container string
 	var containerArg string
 
@@ -176,14 +158,14 @@ func create(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := createContainer(container, image, release, createFlags.authFile, true); err != nil {
+	if err := createContainer(container, image, release, true); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func createContainer(container, image, release, authFile string, showCommandToEnter bool) error {
+func createContainer(container, image, release string, showCommandToEnter bool) error {
 	if container == "" {
 		panic("container not specified")
 	}
@@ -210,7 +192,7 @@ func createContainer(container, image, release, authFile string, showCommandToEn
 		return errors.New(errMsg)
 	}
 
-	pulled, err := pullImage(image, release, authFile)
+	pulled, err := pullImage(image, release)
 	if err != nil {
 		return err
 	}
@@ -646,7 +628,7 @@ func getServiceSocket(serviceName string, unitName string) (string, error) {
 	return "", fmt.Errorf("failed to find a SOCK_STREAM socket for %s", unitName)
 }
 
-func pullImage(image, release, authFile string) (bool, error) {
+func pullImage(image, release string) (bool, error) {
 	if ok := utils.ImageReferenceCanBeID(image); ok {
 		logrus.Debugf("Looking for image %s", image)
 
@@ -721,7 +703,7 @@ func pullImage(image, release, authFile string) (bool, error) {
 		defer s.Stop()
 	}
 
-	if err := podman.Pull(imageFull, authFile); err != nil {
+	if err := podman.Pull(imageFull); err != nil {
 		var builder strings.Builder
 		fmt.Fprintf(&builder, "failed to pull image %s\n", imageFull)
 		fmt.Fprintf(&builder, "If it was a private image, log in with: podman login %s\n", domain)
