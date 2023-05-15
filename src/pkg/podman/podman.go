@@ -38,10 +38,6 @@ type Image struct {
 type ImageSlice []Image
 
 var (
-	podmanVersion string
-)
-
-var (
 	LogLevel = logrus.ErrorLevel
 )
 
@@ -368,20 +364,6 @@ func Start(container string, stderr io.Writer) error {
 	args := []string{"--log-level", logLevelString, "start", container}
 
 	if err := shell.Run("podman", nil, nil, stderr, args...); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func SystemMigrate(ociRuntimeRequired string) error {
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "system", "migrate"}
-	if ociRuntimeRequired != "" {
-		args = append(args, []string{"--new-runtime", ociRuntimeRequired}...)
-	}
-
-	if err := shell.Run("podman", nil, nil, nil, args...); err != nil {
 		return err
 	}
 

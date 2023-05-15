@@ -559,31 +559,6 @@ func startContainer(container string) error {
 		return nil
 	}
 
-	errString := stderr.String()
-	if !strings.Contains(errString, "use system migrate to mitigate") {
-		return fmt.Errorf("failed to start container %s", container)
-	}
-
-	logrus.Debug("Checking if 'podman system migrate' supports '--new-runtime'")
-
-	logrus.Debug("'podman system migrate' supports '--new-runtime'")
-
-	ociRuntimeRequired := "runc"
-	if cgroupsVersion == 2 {
-		ociRuntimeRequired = "crun"
-	}
-
-	logrus.Debugf("Migrating containers to OCI runtime %s", ociRuntimeRequired)
-
-	if err := podman.SystemMigrate(ociRuntimeRequired); err != nil {
-		var builder strings.Builder
-		fmt.Fprintf(&builder, "failed to migrate containers to OCI runtime %s\n", ociRuntimeRequired)
-		fmt.Fprintf(&builder, "Factory reset with: podman system reset")
-
-		errMsg := builder.String()
-		return errors.New(errMsg)
-	}
-
 	if err := podman.Start(container, nil); err != nil {
 		var builder strings.Builder
 		fmt.Fprintf(&builder, "container %s doesn't support cgroups v%d\n", container, cgroupsVersion)
