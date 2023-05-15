@@ -93,7 +93,7 @@ func rmi(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, image := range args {
-			if _, err := podman.IsToolboxImage(image); err != nil {
+			if _, err := podman.ImageExists(image); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 				continue
 			}

@@ -93,7 +93,7 @@ func rm(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, container := range args {
-			if _, err := podman.IsToolboxContainer(container); err != nil {
+			if _, err := podman.ContainerExists(container); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 				continue
 			}

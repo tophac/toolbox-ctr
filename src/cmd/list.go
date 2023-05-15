@@ -220,7 +220,7 @@ func getImages(fillNameWithID bool) ([]podman.Image, error) {
 func listOutput(images []podman.Image, containers []toolboxContainer) {
 	if len(images) != 0 {
 		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(writer, "%s\t%s\t%s\n", "IMAGE ID", "IMAGE NAME", "SIZE")
+		fmt.Fprintf(writer, "%s\t%s\t%s\n", "DIGEST", "IMAGE NAME", "SIZE")
 
 		for _, image := range images {
 			if len(image.Names) != 1 {
