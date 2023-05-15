@@ -367,20 +367,20 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 
 	createArgs := []string{
 		"-n", "tb", "run", "-d", "-t",
-		//"--with-ns", "cgroup:/proc/1/ns/cgroup",
+		"--with-ns", "cgroup:/proc/1/ns/cgroup",
 		"--env", toolboxPathEnvArg,
 	}
 
 	createArgs = append(createArgs, xdgRuntimeDirEnv...)
 
 	createArgs = append(createArgs, []string{
-		//"--with-ns", "ipc:/proc/1/ns/ipc",
+		"--with-ns", "ipc:/proc/1/ns/ipc",
 		"--label", "com.github.containers.toolbox=true",
 	}...)
 
 	createArgs = append(createArgs, []string{
 		"--net-host",
-		//"--with-ns", "pid:/proc/1/ns/pid",
+		"--with-ns", "pid:/proc/1/ns/pid",
 		"--privileged",
 	}...)
 
@@ -407,6 +407,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	}...)
 
 	createArgs = append(createArgs, entryPoint...)
+	fmt.Println(createArgs)
 
 	logrus.Debugf("Creating container %s:", container)
 	logrus.Debug("podman")
