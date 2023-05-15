@@ -596,7 +596,7 @@ func pullImage(image, release string) (bool, error) {
 		imageLocal := "localhost/" + image
 		logrus.Debugf("Looking for image %s", imageLocal)
 
-		if _, err := podman.ImageExists(imageLocal); err == nil {
+		if test, _ := podman.ImageExists(imageLocal); test {
 			return true, nil
 		}
 	}
@@ -615,7 +615,7 @@ func pullImage(image, release string) (bool, error) {
 
 	logrus.Debugf("Looking for image %s", imageFull)
 
-	if _, err := podman.ImageExists(imageFull); err == nil {
+	if test, _ := podman.ImageExists(imageFull); test {
 		return true, nil
 	}
 
