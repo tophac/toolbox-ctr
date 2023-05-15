@@ -300,11 +300,6 @@ func runCommandWithFallbacks(container string,
 
 	var detachKeysSupported bool
 
-	if podman.CheckVersion("1.8.1") {
-		logrus.Debug("'podman exec' supports disabling the detach keys")
-		detachKeysSupported = true
-	}
-
 	envOptions := utils.GetEnvOptionsForPreservedVariables()
 	preserveFDsString := fmt.Sprint(preserveFDs)
 
@@ -570,20 +565,6 @@ func startContainer(container string) error {
 	}
 
 	logrus.Debug("Checking if 'podman system migrate' supports '--new-runtime'")
-
-	if !podman.CheckVersion("1.6.2") {
-		var builder strings.Builder
-
-		fmt.Fprintf(&builder,
-			"container %s doesn't support cgroups v%d\n",
-			container,
-			cgroupsVersion)
-
-		fmt.Fprintf(&builder, "Update Podman to version 1.6.2 or newer.\n")
-
-		errMsg := builder.String()
-		return errors.New(errMsg)
-	}
 
 	logrus.Debug("'podman system migrate' supports '--new-runtime'")
 

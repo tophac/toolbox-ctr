@@ -23,7 +23,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/HarryMichal/go-version"
 	"github.com/containers/toolbox/pkg/shell"
 	"github.com/containers/toolbox/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -111,20 +110,6 @@ func (images ImageSlice) Less(i, j int) bool {
 
 func (images ImageSlice) Swap(i, j int) {
 	images[i], images[j] = images[j], images[i]
-}
-
-// CheckVersion compares provided version with the version of Podman.
-//
-// Takes in one string parameter that should be in the format that is used for versioning (eg. 1.0.0, 2.5.1-dev).
-//
-// Returns true if the current version is equal to or higher than the required version.
-func CheckVersion(requiredVersion string) bool {
-	currentVersion, _ := GetVersion()
-
-	currentVersion = version.Normalize(currentVersion)
-	requiredVersion = version.Normalize(requiredVersion)
-
-	return version.CompareSimple(currentVersion, requiredVersion) >= 0
 }
 
 // ContainerExists checks using Podman if a container with given ID/name exists.
@@ -262,37 +247,6 @@ func GetImages() ([]Image, error) {
 		return nil, err
 	}
 	return images, nil
-}
-
-// GetVersion returns version of Podman in a string
-func GetVersion() (string, error) {
-	if podmanVersion != "" {
-		return podmanVersion, nil
-	}
-
-	var stdout bytes.Buffer
-
-	logLevelString := LogLevel.String()
-	args := []string{"--log-level", logLevelString, "version", "--format", "json"}
-
-	if err := shell.Run("podman", nil, &stdout, nil, args...); err != nil {
-		return "", err
-	}
-
-	output := stdout.Bytes()
-	var jsonoutput map[string]interface{}
-	if err := json.Unmarshal(output, &jsonoutput); err != nil {
-		return "", err
-	}
-
-	podmanClientInfoInterface := jsonoutput["Client"]
-	switch podmanClientInfo := podmanClientInfoInterface.(type) {
-	case nil:
-		podmanVersion = jsonoutput["Version"].(string)
-	case map[string]interface{}:
-		podmanVersion = podmanClientInfo["Version"].(string)
-	}
-	return podmanVersion, nil
 }
 
 // ImageExists checks using Podman if an image with given ID/name exists.
