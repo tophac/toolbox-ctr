@@ -207,7 +207,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 
 	toolboxPath := os.Getenv("TOOLBOX_PATH")
 	toolboxPathEnvArg := "TOOLBOX_PATH=" + toolboxPath
-	toolboxPathMountArg := toolboxPath + ":/usr/bin/toolbox:ro"
+	toolboxPathMountArg := "type=bind,src=" + toolboxPath + ",dst=/usr/bin/toolbox,options=rbind:rprivate:ro"
 
 	var runtimeDirectory string
 	var xdgRuntimeDirEnv []string
@@ -225,39 +225,21 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		runtimeDirectory = xdgRuntimeDir
 	}
 
-	runtimeDirectoryMountArg := runtimeDirectory + ":" + runtimeDirectory
-
-	logrus.Debug("Checking if 'podman create' supports '--mount type=devpts'")
-
-	var devPtsMount []string
-
-	if podman.CheckVersion("2.1.0") {
-		logrus.Debug("'podman create' supports '--mount type=devpts'")
-		devPtsMount = []string{"--mount", "type=devpts,destination=/dev/pts"}
-	}
-
-	logrus.Debug("Checking if 'podman create' supports '--ulimit host'")
-
-	var ulimitHost []string
-
-	if podman.CheckVersion("1.5.0") {
-		logrus.Debug("'podman create' supports '--ulimit host'")
-		ulimitHost = []string{"--ulimit", "host"}
-	}
-
+	runtimeDirectoryMountArg := "type=bind,src=" + runtimeDirectory + ",dst=" + runtimeDirectory + ",options=rbind"
 	var usernsArg string
 	if currentUser.Uid == "0" {
 		usernsArg = "host"
 	} else {
 		usernsArg = "keep-id"
 	}
+	fmt.Println(usernsArg)
 
 	dbusSystemSocket, err := getDBusSystemSocket()
 	if err != nil {
 		return err
 	}
 
-	dbusSystemSocketMountArg := dbusSystemSocket + ":" + dbusSystemSocket
+	dbusSystemSocketMountArg := "type=bind,src=" + dbusSystemSocket + ",dst=" + dbusSystemSocket + ",options=nosuid:nodev:rbind"
 
 	homeDirEvaled, err := filepath.EvalSymlinks(currentUser.HomeDir)
 	if err != nil {
@@ -265,7 +247,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	}
 
 	logrus.Debugf("%s canonicalized to %s", currentUser.HomeDir, homeDirEvaled)
-	homeDirMountArg := homeDirEvaled + ":" + homeDirEvaled + ":rslave"
+	homeDirMountArg := "type=bind,src=" + homeDirEvaled + ",dst=" + homeDirEvaled + ",options=rbind:rslave"
 
 	var avahiSocketMount []string
 
@@ -274,8 +256,8 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		logrus.Debug(err)
 	}
 	if avahiSocket != "" {
-		avahiSocketMountArg := avahiSocket + ":" + avahiSocket
-		avahiSocketMount = []string{"--volume", avahiSocketMountArg}
+		avahiSocketMountArg := "type=bind,src=" + avahiSocket + ",dst=" + avahiSocket + ",options=nosuid:nodev:rbind:rprivate"
+		avahiSocketMount = []string{"--mount", avahiSocketMountArg}
 	}
 
 	var kcmSocketMount []string
@@ -285,8 +267,8 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		logrus.Debug(err)
 	}
 	if kcmSocket != "" {
-		kcmSocketMountArg := kcmSocket + ":" + kcmSocket
-		kcmSocketMount = []string{"--volume", kcmSocketMountArg}
+		kcmSocketMountArg := "type=bind,src=" + kcmSocket + ",dst=" + kcmSocket + ",options=nosuid:nodev:rbind:rprivate"
+		kcmSocketMount = []string{"--mount", kcmSocketMountArg}
 	}
 
 	var pcscSocketMount []string
@@ -296,8 +278,8 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		logrus.Debug(err)
 	}
 	if pcscSocket != "" {
-		pcscSocketMountArg := pcscSocket + ":" + pcscSocket
-		pcscSocketMount = []string{"--volume", pcscSocketMountArg}
+		pcscSocketMountArg := "type=bind,src=" + pcscSocket + ",dst=" + pcscSocket + ",options=nosuid:nodev:rbind:rprivate"
+		pcscSocketMount = []string{"--mount", pcscSocketMountArg}
 	}
 
 	var mediaLink []string
@@ -311,7 +293,8 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 			logrus.Debug("/media is a symbolic link to /run/media")
 			mediaLink = []string{"--media-link"}
 		} else {
-			mediaMount = []string{"--volume", "/media:/media:rslave"}
+			media := "type=bind,src=" + "/media" + ",dst=" + "/media" + ",options=rbind:rslave"
+			mediaMount = []string{"--mount", media}
 		}
 	}
 
@@ -326,14 +309,16 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 			logrus.Debug("/mnt is a symbolic link to /var/mnt")
 			mntLink = []string{"--mnt-link"}
 		} else {
-			mntMount = []string{"--volume", "/mnt:/mnt:rslave"}
+			mnt := "type=bind,src=" + "/mnt" + ",dst=" + "/mnt" + ",options=rbind:rslave"
+			mntMount = []string{"--mount", mnt}
 		}
 	}
 
 	var runMediaMount []string
 
 	if utils.PathExists("/run/media") {
-		runMediaMount = []string{"--volume", "/run/media:/run/media:rslave"}
+		runMedia := "type=bind,src=" + "/run/media" + ",dst=" + "/run/media" + ",options=nosuid:nodev:rbind:rslave"
+		runMediaMount = []string{"--mount", runMedia}
 	}
 
 	logrus.Debug("Looking for toolbox.sh")
@@ -344,8 +329,8 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		if utils.PathExists(mount.source) {
 			logrus.Debugf("Found %s", mount.source)
 
-			toolboxShMountArg := mount.source + ":" + mount.containerPath + ":ro"
-			toolboxShMount = []string{"--volume", toolboxShMountArg}
+			toolboxShMountArg := "type=bind,src=" + mount.source + ",dst=" + mount.containerPath + ",options=rbind:rprivate:ro"
+			toolboxShMount = []string{"--mount", toolboxShMountArg}
 			break
 		}
 	}
@@ -359,8 +344,6 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		logrus.Debug("/home is a symbolic link to /var/home")
 		slashHomeLink = []string{"--home-link"}
 	}
-
-	logLevelString := podman.LogLevel.String()
 
 	userShell := os.Getenv("SHELL")
 	if userShell == "" {
@@ -383,43 +366,32 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	entryPoint = append(entryPoint, mntLink...)
 
 	createArgs := []string{
-		"--log-level", logLevelString,
-		"create",
-		"--cgroupns", "host",
-		"--dns", "none",
+		"-n", "tb", "run", "-d", "-t",
+		//"--with-ns", "cgroup:/proc/1/ns/cgroup",
 		"--env", toolboxPathEnvArg,
 	}
 
 	createArgs = append(createArgs, xdgRuntimeDirEnv...)
 
 	createArgs = append(createArgs, []string{
-		"--hostname", "toolbox",
-		"--ipc", "host",
+		//"--with-ns", "ipc:/proc/1/ns/ipc",
 		"--label", "com.github.containers.toolbox=true",
 	}...)
 
-	createArgs = append(createArgs, devPtsMount...)
-
 	createArgs = append(createArgs, []string{
-		"--name", container,
-		"--network", "host",
-		"--no-hosts",
-		"--pid", "host",
+		"--net-host",
+		//"--with-ns", "pid:/proc/1/ns/pid",
 		"--privileged",
-		"--security-opt", "label=disable",
 	}...)
 
-	createArgs = append(createArgs, ulimitHost...)
-
 	createArgs = append(createArgs, []string{
-		"--userns", usernsArg,
-		"--user", "root:root",
-		"--volume", "/:/run/host:rslave",
-		"--volume", "/dev:/dev:rslave",
-		"--volume", dbusSystemSocketMountArg,
-		"--volume", homeDirMountArg,
-		"--volume", toolboxPathMountArg,
-		"--volume", runtimeDirectoryMountArg,
+		//"--with-ns", "user:/proc/1/ns/user",
+		"--mount", "type=bind,src=/,dst=/run/host,options=rbind:rslave",
+		"--mount", "type=bind,src=/dev,dst=/dev,options=nosuid:rbind:rslave",
+		"--mount", dbusSystemSocketMountArg,
+		"--mount", homeDirMountArg,
+		"--mount", toolboxPathMountArg,
+		"--mount", runtimeDirectoryMountArg,
 	}...)
 
 	createArgs = append(createArgs, avahiSocketMount...)
@@ -431,7 +403,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	createArgs = append(createArgs, toolboxShMount...)
 
 	createArgs = append(createArgs, []string{
-		imageFull,
+		imageFull, container,
 	}...)
 
 	createArgs = append(createArgs, entryPoint...)
@@ -452,8 +424,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		s.Start()
 		defer s.Stop()
 	}
-	fmt.Print("createargs:\n", createArgs)
-	if err := shell.Run("podman", nil, nil, nil, createArgs...); err != nil {
+	if err := shell.Run("ctr", nil, nil, nil, createArgs...); err != nil {
 		return fmt.Errorf("failed to create container %s", container)
 	}
 
