@@ -139,14 +139,14 @@ func init() {
 }
 
 func initContainer(cmd *cobra.Command, args []string) error {
-	if !utils.IsInsideContainer() {
-		var builder strings.Builder
-		fmt.Fprintf(&builder, "the 'init-container' command can only be used inside containers\n")
-		fmt.Fprintf(&builder, "Run '%s --help' for usage.", executableBase)
+	// if !utils.IsInsideContainer() {
+	// 	var builder strings.Builder
+	// 	fmt.Fprintf(&builder, "the 'init-container' command can only be used inside containers\n")
+	// 	fmt.Fprintf(&builder, "Run '%s --help' for usage.", executableBase)
 
-		errMsg := builder.String()
-		return errors.New(errMsg)
-	}
+	// 	errMsg := builder.String()
+	// 	return errors.New(errMsg)
+	// }
 
 	if !cmd.Flag("gid").Changed {
 		initContainerFlags.gid = initContainerFlags.uid
@@ -177,13 +177,13 @@ func initContainer(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			if _, err := os.Readlink("/etc/hosts"); err != nil {
-				if err := redirectPath("/etc/hosts",
-					"/run/host/etc/hosts",
-					false); err != nil {
-					return err
-				}
-			}
+			// if _, err := os.Readlink("/etc/hosts"); err != nil {
+			// 	if err := redirectPath("/etc/hosts",
+			// 		"/run/host/etc/hosts",
+			// 		false); err != nil {
+			// 		return err
+			// 	}
+			// }
 
 			if localtimeTarget, err := os.Readlink("/etc/localtime"); err != nil ||
 				localtimeTarget != "/run/host/etc/localtime" {
@@ -198,13 +198,13 @@ func initContainer(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			if _, err := os.Readlink("/etc/resolv.conf"); err != nil {
-				if err := redirectPath("/etc/resolv.conf",
-					"/run/host/etc/resolv.conf",
-					false); err != nil {
-					return err
-				}
-			}
+			// if _, err := os.Readlink("/etc/resolv.conf"); err != nil {
+			// 	if err := redirectPath("/etc/resolv.conf",
+			// 		"/run/host/etc/resolv.conf",
+			// 		false); err != nil {
+			// 		return err
+			// 	}
+			// }
 
 			for _, mount := range initContainerMounts {
 				if err := mountBind(mount.containerPath, mount.source, mount.flags); err != nil {
