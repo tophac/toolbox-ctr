@@ -140,7 +140,6 @@ func run(cmd *cobra.Command, args []string) error {
 		defaultContainer,
 		image,
 		release,
-		runFlags.preserveFDs,
 		command,
 		false,
 		false,
@@ -163,7 +162,6 @@ func run(cmd *cobra.Command, args []string) error {
 func runCommand(container string,
 	defaultContainer bool,
 	image, release string,
-	preserveFDs uint,
 	command []string,
 	emitEscapeSequence, fallbackToBash, pedantic bool) error {
 	if !pedantic {
@@ -282,7 +280,6 @@ func runCommand(container string,
 	logrus.Debugf("Container %s is initialized", container)
 
 	if err := runCommandWithFallbacks(container,
-		preserveFDs,
 		command,
 		emitEscapeSequence,
 		fallbackToBash); err != nil {
@@ -293,15 +290,8 @@ func runCommand(container string,
 }
 
 func runCommandWithFallbacks(container string,
-	preserveFDs uint,
 	command []string,
 	emitEscapeSequence, fallbackToBash bool) error {
-	logrus.Debug("Checking if 'podman exec' supports disabling the detach keys")
-
-	var detachKeysSupported bool
-
-	envOptions := utils.GetEnvOptionsForPreservedVariables()
-	preserveFDsString := fmt.Sprint(preserveFDs)
 
 	var stderr io.Writer
 	var ttyNeeded bool
@@ -327,10 +317,7 @@ func runCommandWithFallbacks(container string,
 
 	for {
 		execArgs := constructExecArgs(container,
-			preserveFDsString,
 			command,
-			detachKeysSupported,
-			envOptions,
 			fallbackToBash,
 			ttyNeeded,
 			workDir)
@@ -345,7 +332,7 @@ func runCommandWithFallbacks(container string,
 			logrus.Debugf("%s", arg)
 		}
 
-		exitCode, err := shell.RunWithExitCode("podman", os.Stdin, os.Stdout, stderr, execArgs...)
+		exitCode, err := shell.RunWithExitCode("ctr", os.Stdin, os.Stdout, stderr, execArgs...)
 
 		if emitEscapeSequence {
 			fmt.Printf("\033]777;container;pop;;;%s\033\\", currentUser.Uid)
@@ -438,32 +425,15 @@ func constructCapShArgs(command []string, useLoginShell bool) []string {
 	return capShArgs
 }
 
-func constructExecArgs(container, preserveFDs string,
+func constructExecArgs(container string,
 	command []string,
-	detachKeysSupported bool,
-	envOptions []string,
 	fallbackToBash bool,
 	ttyNeeded bool,
 	workDir string) []string {
-	logLevelString := podman.LogLevel.String()
 
 	execArgs := []string{
-		"--log-level", logLevelString,
-		"exec",
+		"-n", "tb", "t", "exec", "--exec-id=9999",
 	}
-
-	if detachKeysSupported {
-		execArgs = append(execArgs, []string{
-			"--detach-keys", "",
-		}...)
-	}
-
-	execArgs = append(execArgs, envOptions...)
-
-	execArgs = append(execArgs, []string{
-		"--interactive",
-		"--preserve-fds", preserveFDs,
-	}...)
 
 	if ttyNeeded {
 		execArgs = append(execArgs, []string{
@@ -473,7 +443,7 @@ func constructExecArgs(container, preserveFDs string,
 
 	execArgs = append(execArgs, []string{
 		"--user", currentUser.Username,
-		"--workdir", workDir,
+		"--cwd", workDir,
 	}...)
 
 	execArgs = append(execArgs, []string{
