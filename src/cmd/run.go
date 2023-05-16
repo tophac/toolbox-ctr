@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/containers/toolbox/pkg/podman"
 	"github.com/containers/toolbox/pkg/shell"
@@ -234,50 +233,7 @@ func runCommand(container string,
 		}
 	}
 
-	logrus.Debugf("Starting container %s", container)
-	if err := startContainer(container); err != nil {
-		return err
-	}
-
-	entryPoint, entryPointPID, err := getEntryPointAndPID(container)
-	if err != nil {
-		return err
-	}
-
-	if entryPoint != "toolbox" {
-		var builder strings.Builder
-		fmt.Fprintf(&builder, "container %s is too old and no longer supported \n", container)
-		fmt.Fprintf(&builder, "Recreate it with Toolbox version 0.0.17 or newer.\n")
-
-		errMsg := builder.String()
-		return errors.New(errMsg)
-	}
-
-	if entryPointPID <= 0 {
-		return fmt.Errorf("invalid entry point PID of container %s", container)
-	}
-
 	logrus.Debugf("Waiting for container %s to finish initializing", container)
-
-	toolboxRuntimeDirectory, err := utils.GetRuntimeDirectory(currentUser)
-	if err != nil {
-		return err
-	}
-
-	initializedStamp := fmt.Sprintf("%s/container-initialized-%d", toolboxRuntimeDirectory, entryPointPID)
-
-	logrus.Debugf("Checking if initialization stamp %s exists", initializedStamp)
-
-	initializedTimeout := 25 // seconds
-	for i := 0; !utils.PathExists(initializedStamp); i++ {
-		if i == initializedTimeout {
-			return fmt.Errorf("failed to initialize container %s", container)
-		}
-
-		time.Sleep(time.Second)
-	}
-
-	logrus.Debugf("Container %s is initialized", container)
 
 	if err := runCommandWithFallbacks(container,
 		command,
@@ -456,48 +412,18 @@ func constructExecArgs(container string,
 	return execArgs
 }
 
-func getEntryPointAndPID(container string) (string, int, error) {
-	logrus.Debugf("Inspecting entry point of container %s", container)
-
-	info, err := podman.Inspect("container", container)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to inspect entry point of container %s", container)
-	}
-
-	config := info["Config"].(map[string]interface{})
-	entryPoint := config["Cmd"].([]interface{})[0].(string)
-
-	state := info["State"].(map[string]interface{})
-	entryPointPID := state["Pid"]
-	logrus.Debugf("Entry point PID is a %T", entryPointPID)
-
-	var entryPointPIDInt int
-
-	switch entryPointPID := entryPointPID.(type) {
-	case float64:
-		entryPointPIDInt = int(entryPointPID)
-	default:
-		return "", 0, fmt.Errorf("failed to inspect entry point PID of container %s", container)
-	}
-
-	logrus.Debugf("Entry point of container %s is %s (PID=%d)", container, entryPoint, entryPointPIDInt)
-
-	return entryPoint, entryPointPIDInt, nil
-}
-
 func isCommandPresent(container, command string) (bool, error) {
 	logrus.Debugf("Looking for command %s in container %s", command, container)
 
-	logLevelString := podman.LogLevel.String()
 	args := []string{
-		"--log-level", logLevelString,
-		"exec",
+		"-n", "tb",
+		"exec", "-t", "-d",
 		"--user", currentUser.Username,
-		container,
+		container, "--exec-id", "5366",
 		"sh", "-c", "command -v \"$1\"", "sh", command,
 	}
 
-	if err := shell.Run("podman", nil, nil, nil, args...); err != nil {
+	if err := shell.Run("ctr", nil, nil, nil, args...); err != nil {
 		return false, err
 	}
 
@@ -507,36 +433,17 @@ func isCommandPresent(container, command string) (bool, error) {
 func isPathPresent(container, path string) (bool, error) {
 	logrus.Debugf("Looking for path %s in container %s", path, container)
 
-	logLevelString := podman.LogLevel.String()
 	args := []string{
-		"--log-level", logLevelString,
-		"exec",
+		"-n", "tb",
+		"exec", "-t", "-d",
 		"--user", currentUser.Username,
-		container,
+		container, "--exec-id", "5477",
 		"sh", "-c", "test -d \"$1\"", "sh", path,
 	}
 
-	if err := shell.Run("podman", nil, nil, nil, args...); err != nil {
+	if err := shell.Run("ctr", nil, nil, nil, args...); err != nil {
 		return false, err
 	}
 
 	return true, nil
-}
-
-func startContainer(container string) error {
-	var stderr strings.Builder
-	if err := podman.Start(container, &stderr); err == nil {
-		return nil
-	}
-
-	if err := podman.Start(container, nil); err != nil {
-		var builder strings.Builder
-		fmt.Fprintf(&builder, "container %s doesn't support cgroups v%d\n", container, cgroupsVersion)
-		fmt.Fprintf(&builder, "Factory reset with: podman system reset")
-
-		errMsg := builder.String()
-		return errors.New(errMsg)
-	}
-
-	return nil
 }
