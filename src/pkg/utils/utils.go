@@ -691,7 +691,8 @@ func IsContainerNameValid(containerName string) bool {
 }
 
 func IsInsideContainer() bool {
-	return PathExists("/run/.containerenv")
+	_, test := os.LookupEnv("INCONTAINER")
+	return test
 }
 
 func IsInsideToolboxContainer() bool {

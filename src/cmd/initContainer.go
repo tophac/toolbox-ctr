@@ -139,14 +139,14 @@ func init() {
 }
 
 func initContainer(cmd *cobra.Command, args []string) error {
-	// if !utils.IsInsideContainer() {
-	// 	var builder strings.Builder
-	// 	fmt.Fprintf(&builder, "the 'init-container' command can only be used inside containers\n")
-	// 	fmt.Fprintf(&builder, "Run '%s --help' for usage.", executableBase)
+	if !utils.IsInsideContainer() {
+		var builder strings.Builder
+		fmt.Fprintf(&builder, "the 'init-container' command can only be used inside containers\n")
+		fmt.Fprintf(&builder, "Run '%s --help' for usage.", executableBase)
 
-	// 	errMsg := builder.String()
-	// 	return errors.New(errMsg)
-	// }
+		errMsg := builder.String()
+		return errors.New(errMsg)
+	}
 
 	if !cmd.Flag("gid").Changed {
 		initContainerFlags.gid = initContainerFlags.uid

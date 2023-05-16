@@ -362,6 +362,7 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 		"-n", "tb", "run", "-d", "-t",
 		"--with-ns", "cgroup:/proc/1/ns/cgroup",
 		"--env", toolboxPathEnvArg,
+		"--env", "INCONTAINER=TRUE",
 	}
 
 	createArgs = append(createArgs, xdgRuntimeDirEnv...)
