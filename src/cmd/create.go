@@ -226,13 +226,6 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	}
 
 	runtimeDirectoryMountArg := "type=bind,src=" + runtimeDirectory + ",dst=" + runtimeDirectory + ",options=rbind"
-	var usernsArg string
-	if currentUser.Uid == "0" {
-		usernsArg = "host"
-	} else {
-		usernsArg = "keep-id"
-	}
-	fmt.Println(usernsArg)
 
 	dbusSystemSocket, err := getDBusSystemSocket()
 	if err != nil {

@@ -182,7 +182,6 @@ func listHelp(cmd *cobra.Command, args []string) {
 func getImages(fillNameWithID bool) ([]podman.Image, error) {
 	logrus.Debug("Fetching all images")
 	images, err := podman.GetImages()
-	fmt.Println(err)
 	if err != nil {
 		logrus.Debugf("Fetching all images failed: %s", err)
 		return nil, errors.New("failed to get images")
