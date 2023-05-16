@@ -407,10 +407,9 @@ func createContainer(container, image, release string, showCommandToEnter bool) 
 	}...)
 
 	createArgs = append(createArgs, entryPoint...)
-	fmt.Println(createArgs)
 
 	logrus.Debugf("Creating container %s:", container)
-	logrus.Debug("podman")
+	logrus.Debug("ctr")
 	for _, arg := range createArgs {
 		logrus.Debugf("%s", arg)
 	}
