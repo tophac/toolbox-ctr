@@ -280,6 +280,10 @@ func Pull(imageName string) error {
 func RemoveContainer(container string, forceDelete bool) error {
 	logrus.Debugf("Removing container %s", container)
 	args := []string{"-n", "tb", "container", "rm"}
+	if forceDelete {
+		delelteargs := []string{"-n", "tb", "t", "kill", container, "--signal", "SIGKILL"}
+		shell.RunWithExitCode("ctr", nil, nil, nil, delelteargs...)
+	}
 
 	args = append(args, container)
 
