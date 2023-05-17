@@ -266,6 +266,7 @@ func listOutput(images []podman.Image, containers []toolboxContainer) {
 
 		for _, container := range containers {
 			isRunning := false
+			isRunning = container.Status == "RUNNING"
 			if term.IsTerminal(stdoutFdInt) {
 				var color string
 				if isRunning {
