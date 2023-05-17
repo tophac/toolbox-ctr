@@ -39,7 +39,7 @@ func Run(name string, stdin io.Reader, stdout, stderr io.Writer, arg ...string) 
 
 func RunWithExitCode(name string, stdin io.Reader, stdout, stderr io.Writer, arg ...string) (int, error) {
 	logLevel := logrus.GetLevel()
-	if stderr == nil && logLevel >= logrus.DebugLevel {
+	if stderr == nil || logLevel >= logrus.DebugLevel {
 		stderr = os.Stderr
 	}
 
